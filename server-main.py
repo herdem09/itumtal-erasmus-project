@@ -141,7 +141,7 @@ while True:
         open_door=True
         open_door_input=False
         print("open_door=True")
-        
+
     if timer>15:
         open_door=False
         print("open_door=False")
@@ -150,7 +150,7 @@ while True:
         open_door=False
         close_door=False
 
-    if card_input==right_card or password_input_input == right_password or face_recognition==True:
+    if card_input==right_card or password_input == right_password or face_recognition==True:
         first_time=time.time()
         open_door=True
         open_door_input=False
