@@ -9,23 +9,24 @@ from email.mime.multipart import MIMEMultipart
 import datetime
 from dotenv import load_dotenv
 
+
 # ---- ENV LOAD ----
 load_dotenv()  # .env dosyasındaki değerleri yükle
 
 PASSWORD = os.getenv("PASSWORD")
-passwords = {
+PASSWORDS = {
     "name": os.getenv("PASSWORD_NAME"),
     "password": os.getenv("PASSWORD_VALUE")
 }
 
-sender_email = os.getenv("SENDER_EMAIL")
-receiver_email = os.getenv("RECEIVER_EMAIL")
-app_password = os.getenv("APP_PASSWORD")
+SENDER_EMAIL = os.getenv("SENDER_EMAIL")
+RECEIVER_EMAIL = os.getenv("RECEIVER_EMAIL")
+APP_PASSWORD = os.getenv("APP_PASSWORD")
 
 app = Flask(__name__)
 
 # ---- İzinli input değişkenleri ----
-allowed_input_variables = {
+ALLOWED_INPUT_VARIABLES = {
     "confirmed_code": str,
     "open_door_input": bool,
     "close_door": bool,
@@ -37,7 +38,8 @@ allowed_input_variables = {
     "light_input": bool,
     "curtain_input": bool
 }
-home_input_variables = {
+
+HOME_INPUT_VARIABLES = {
     "password": str,
     "temperature": int,
     "brightness": bool,
@@ -55,28 +57,31 @@ home_input_variables = {
     "curtain_input": bool
 }
 
-password_allowed_variables = {
-    "name":"str",
-    "password":"str",
+PASSWORD_ALLOWED_VARIABLES = {
+    "name": "str",
+    "password": "str",
 }
 
-users_codes_list=[]
+# Global variables
+users_codes_list = []
 characters = string.ascii_letters + string.digits
-input_excel_file = "input.xlsx"
-output_excel_file = "output.xlsx"
-image_file = "image.png"
-email_site=""
-email_confirmed_codes=[]
+INPUT_EXCEL_FILE = "input.xlsx"
+OUTPUT_EXCEL_FILE = "output.xlsx"
+IMAGE_FILE = "image.png"
+email_site = ""
+email_confirmed_codes = []
 now = datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")
 
-mail_html = f"""
+MAIL_HTML = f"""
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
   <h2 style="color: #4F46E5;">Akıllı Ev Kontrol Sistemi</h2>
   <p>Merhaba herdemitumtal</p>
   <p>Akıllı ev sisteminize giriş için linke tıklayın:</p>
-  <div style="background-color: #F3F4F6; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+  <div style="background-color: #F3F4F6; padding: 20px; border-radius: 8px; 
+       margin: 20px 0; text-align: center;">
     <a href="{email_site}" 
-       style="color: #4F46E5; font-size: 24px; text-decoration: none; font-weight: bold;">
+       style="color: #4F46E5; font-size: 24px; text-decoration: none; 
+              font-weight: bold;">
        {email_site}
     </a>
   </div>
@@ -84,73 +89,85 @@ mail_html = f"""
   <p style="color: #6B7280; font-size: 12px;">Tarih: {now}</p>
 </div>
 """
-@app.route('/app-input', methods=['POST'])
-def app_input():
-    data = request.get_json()
-    if not data:
-        return jsonify({"error": "no data"}), 400
 
+
+def filter_data(data, allowed_variables):
+    """Veriyi izinli değişkenlere göre filtreler."""
     filtered_data = {}
-    for key, val_type in home_input_variables.items():
+    for key, val_type in allowed_variables.items():
         if key in data:
             try:
                 filtered_data[key] = val_type(data[key])
             except (ValueError, TypeError):
-                return jsonify({"error": "wrong format data"}), 400
+                return None
+    return filtered_data
 
-    passwordin = data.get("password")
-    if passwordin == password:
-        try:
-            if os.path.exists(input_excel_file):
-                df = pd.read_excel(input_excel_file, sheet_name="input")
-                df = pd.concat([df, pd.DataFrame([filtered_data])], ignore_index=True)
-            else:
-                df = pd.DataFrame([filtered_data])
 
-            with pd.ExcelWriter(input_excel_file, engine='openpyxl') as writer:
-                df.to_excel(writer, index=False, sheet_name="input")
+def save_to_excel(data, filename, sheet_name="input"):
+    """Veriyi Excel dosyasına kaydeder."""
+    try:
+        if os.path.exists(filename):
+            df = pd.read_excel(filename, sheet_name=sheet_name)
+            df = pd.concat([df, pd.DataFrame([data])], ignore_index=True)
+        else:
+            df = pd.DataFrame([data])
 
+        with pd.ExcelWriter(filename, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name=sheet_name)
+        return True
+    except Exception:
+        return False
+
+
+@app.route('/app-input', methods=['POST'])
+def app_input():
+    """Uygulama giriş endpoint'i."""
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "no data"}), 400
+
+    filtered_data = filter_data(data, HOME_INPUT_VARIABLES)
+    if filtered_data is None:
+        return jsonify({"error": "wrong format data"}), 400
+
+    password_input = data.get("password")
+    if password_input == PASSWORD:
+        if save_to_excel(filtered_data, INPUT_EXCEL_FILE):
             return jsonify({"success": "successful"}), 200
-        except Exception as e:
-            return jsonify({"error": "internal server error", "details": str(e)}), 500
+        else:
+            return jsonify({
+                "error": "internal server error"
+            }), 500
 
     return jsonify({"error": "unauthorized"}), 401
 
+
 @app.route('/server-input', methods=['POST'])
 def server_input():
+    """Sunucu giriş endpoint'i."""
     data = request.get_json()
     if not data:
         return jsonify({"error": "no data"}), 400
 
-    filtered_data = {}
-    for key, val_type in allowed_input_variables.items():
-        if key in data:
-            try:
-                filtered_data[key] = val_type(data[key])
-            except (ValueError, TypeError):
-                return jsonify({"error": "wrong format data"}), 400
+    filtered_data = filter_data(data, ALLOWED_INPUT_VARIABLES)
+    if filtered_data is None:
+        return jsonify({"error": "wrong format data"}), 400
 
     confirmed_code = data.get("confirmed_code")
     if confirmed_code in email_confirmed_codes:
-        try:
-            if os.path.exists(input_excel_file):
-                df = pd.read_excel(input_excel_file, sheet_name="input")
-                df = pd.concat([df, pd.DataFrame([filtered_data])], ignore_index=True)
-            else:
-                df = pd.DataFrame([filtered_data])
-
-            with pd.ExcelWriter(input_excel_file, engine='openpyxl') as writer:
-                df.to_excel(writer, index=False, sheet_name="input")
-
+        if save_to_excel(filtered_data, INPUT_EXCEL_FILE):
             return jsonify({"success": "successful"}), 200
-        except Exception as e:
-            return jsonify({"error": "internal server error", "details": str(e)}), 500
+        else:
+            return jsonify({
+                "error": "internal server error"
+            }), 500
 
     return jsonify({"error": "unauthorized"}), 401
 
 
 @app.route('/server-output', methods=['GET'])
 def server_output():
+    """Sunucu çıkış endpoint'i."""
     data = request.get_json()
 
     if not data:
@@ -159,11 +176,11 @@ def server_output():
     confirmed_code = data.get("confirmed_code")
 
     if confirmed_code in email_confirmed_codes:
-        if not os.path.exists(output_excel_file):
+        if not os.path.exists(OUTPUT_EXCEL_FILE):
             return jsonify({"error": "no available data"}), 404
 
         try:
-            df = pd.read_excel(output_excel_file, sheet_name="output")
+            df = pd.read_excel(OUTPUT_EXCEL_FILE, sheet_name="output")
             if df.empty:
                 return jsonify({"error": "no available data"}), 404
 
@@ -171,14 +188,17 @@ def server_output():
             last_data = df.iloc[-1].to_dict()
             return jsonify({"success": "successful", "data": last_data}), 200
         except Exception as e:
-            return jsonify({"error": "internal server error", "details": str(e)}), 500
+            return jsonify({
+                "error": "internal server error",
+                "details": str(e)
+            }), 500
 
     return jsonify({"error": "unauthorized"}), 401
 
 
-
 @app.route('/image-input', methods=['POST'])
 def image_input():
+    """Resim yükleme endpoint'i."""
     if 'file' not in request.files:
         return jsonify({"error": "no data"}), 400
 
@@ -187,17 +207,21 @@ def image_input():
         return jsonify({"error": "wrong format data"}), 400
 
     try:
-        file.save(image_file)
+        file.save(IMAGE_FILE)
         return jsonify({"success": "successful"}), 200
     except Exception as e:
-        return jsonify({"error": "internal server error", "details": str(e)}), 500
+        return jsonify({
+            "error": "internal server error",
+            "details": str(e)
+        }), 500
 
 
 @app.route('/image-output', methods=['GET'])
 def image_output():
+    """Resim çıkış endpoint'i."""
     data = request.get_json()
 
-    if not os.path.exists(image_file):
+    if not os.path.exists(IMAGE_FILE):
         return jsonify({"error": "file not found"}), 404
 
     if not data:
@@ -207,42 +231,53 @@ def image_output():
 
     if confirmed_code in email_confirmed_codes:
         try:
-            return send_file(image_file, mimetype='image/png')
+            return send_file(IMAGE_FILE, mimetype='image/png')
         except Exception as e:
-            return jsonify({"error": "internal server error", "details": str(e)}), 500
+            return jsonify({
+                "error": "internal server error",
+                "details": str(e)
+            }), 500
 
     return jsonify({"error": "unauthorized"}), 401
 
 
 @app.route('/password-confirmation', methods=['GET'])
 def password_confirmation():
+    """Şifre doğrulama endpoint'i."""
     password_data = request.get_json()
     if not password_data:
         return jsonify({"error": "no data"}), 400
 
     # Yalnızca izinli değişkenleri filtrele
     filtered_data = {}
-    for key, val_type in password_allowed_variables.items():
+    for key, val_type in PASSWORD_ALLOWED_VARIABLES.items():
         if key in password_data:
             try:
-                filtered_data[key] = str(password_data[key])  # string olarak alıyoruz
+                filtered_data[key] = str(password_data[key])
             except (ValueError, TypeError):
                 return jsonify({"error": "wrong format data"}), 400
 
-    if filtered_data == passwords:
+    if filtered_data == PASSWORDS:
         try:
             random_code = ''.join(random.choice(characters) for _ in range(16))
             global users_codes_list
             users_codes_list.append(random_code)
-            return jsonify({"success": "successful", "random_code": random_code}), 200
+            return jsonify({
+                "success": "successful",
+                "random_code": random_code
+            }), 200
         except Exception as e:
-            return jsonify({"error": "internal server error", "details": str(e)}), 500
+            return jsonify({
+                "error": "internal server error",
+                "details": str(e)
+            }), 500
 
     return jsonify({"error": "unauthorized"}), 401
 
 
 @app.route('/sign-out', methods=['GET'])
 def sign_out():
+    """Çıkış yapma endpoint'i."""
     data = request.get_json()
     if not data:
         return jsonify({"error": "no data"}), 400
@@ -253,15 +288,22 @@ def sign_out():
             global users_codes_list
             if confirmed_code in users_codes_list:
                 users_codes_list.remove(confirmed_code)
-            return jsonify({"success": "successful", "message": "signed out"}), 200
+            return jsonify({
+                "success": "successful",
+                "message": "signed out"
+            }), 200
         except Exception as e:
-            return jsonify({"error": "internal server error", "details": str(e)}), 500
+            return jsonify({
+                "error": "internal server error",
+                "details": str(e)
+            }), 500
 
     return jsonify({"error": "unauthorized"}), 401
 
 
 @app.route('/email', methods=['GET'])
 def email():
+    """E-posta gönderme endpoint'i."""
     data = request.get_json()
     if not data:
         return jsonify({"error": "no data"}), 400
@@ -283,33 +325,48 @@ def email():
 
         message = MIMEMultipart("alternative")
         message["Subject"] = "Akıllı Ev Doğrulama Kodu"
-        message["From"] = sender_email
-        message["To"] = receiver_email
-        part = MIMEText(html_content, "html")
+        message["From"] = SENDER_EMAIL
+        message["To"] = RECEIVER_EMAIL
+        part = MIMEText(MAIL_HTML, "html")
         message.attach(part)
 
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(sender_email, app_password)
-            server.sendmail(sender_email, receiver_email, message.as_string())
+            server.login(SENDER_EMAIL, APP_PASSWORD)
+            server.sendmail(SENDER_EMAIL, RECEIVER_EMAIL, message.as_string())
 
-        return jsonify({"success": "successful", "message": "mail sent"}), 200
+        return jsonify({
+            "success": "successful",
+            "message": "mail sent"
+        }), 200
 
     except Exception as e:
-        return jsonify({"error": "internal server error", "details": str(e)}), 500
-
+        return jsonify({
+            "error": "internal server error",
+            "details": str(e)
+        }), 500
 
 
 def email_confirm():
+    """E-posta doğrulama fonksiyonu."""
     try:
         confirmed_code = random.randint(100000, 999999)
         global email_confirmed_codes
         email_confirmed_codes.append(confirmed_code)
-        return jsonify({"success": "successful", "email_confirmed_code": confirmed_code}), 200
+        return jsonify({
+            "success": "successful",
+            "email_confirmed_code": confirmed_code
+        }), 200
     except Exception as e:
-        return jsonify({"error": "internal server error", "details": str(e)}), 500
+        return jsonify({
+            "error": "internal server error",
+            "details": str(e)
+        }), 500
+
 
 # URL aynen korunuyor
-app.add_url_rule(f'/email-confirm{email_site}', view_func=email_confirm, methods=['GET'])
+app.add_url_rule(f'/email-confirm{email_site}',
+                 view_func=email_confirm,
+                 methods=['GET'])
 
 
 if __name__ == '__main__':
