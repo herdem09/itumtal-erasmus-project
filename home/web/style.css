@@ -1,0 +1,544 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    color: #333;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 20px 30px;
+    border-radius: 15px;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.header h1 {
+    color: #4a5568;
+    font-size: 2.5rem;
+    font-weight: 700;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+}
+
+.status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+.status-dot.online {
+    background-color: #48bb78;
+}
+
+.status-dot.offline {
+    background-color: #f56565;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.api-info, .controls {
+    background: rgba(255, 255, 255, 0.95);
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.current-api {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.current-api label {
+    font-weight: 600;
+    color: #4a5568;
+    min-width: 100px;
+}
+
+.current-api span {
+    font-family: 'Courier New', monospace;
+    background: #f7fafc;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    word-break: break-all;
+    flex: 1;
+}
+
+.dashboard {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    grid-template-rows: auto auto auto auto auto;
+    gap: 20px;
+    margin-bottom: 20px;
+    grid-template-areas:
+        "temperature weather"
+        "door window fan"
+        "heater light curtain"
+        "rawdata rawdata"
+        "rawdata rawdata";
+}
+
+/* Grid positioning */
+.grid-temperature {
+    grid-area: temperature;
+}
+
+.grid-weather {
+    grid-area: weather;
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 10px;
+}
+
+.grid-door {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+.grid-window {
+    grid-column: 2;
+    grid-row: 2;
+}
+
+.grid-fan {
+    grid-column: 3;
+    grid-row: 2;
+}
+
+.grid-heater {
+    grid-column: 1;
+    grid-row: 3;
+}
+
+.grid-light {
+    grid-column: 2;
+    grid-row: 3;
+}
+
+.grid-curtain {
+    grid-column: 3;
+    grid-row: 3;
+}
+
+/* Yeniden düzenlenmiş grid */
+.dashboard {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr); /* 6 birimlik sistem */
+    grid-template-rows: auto auto auto auto;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+/* Boyut sınıfları */
+.size-1-5 {
+    grid-column: span 1.5; /* 1.5 birim = 9/6 = span 1.5 ama CSS grid tam sayı ister, bu yüzden farklı yaklaşım kullanacağız */
+}
+
+.size-1 {
+    grid-column: span 2; /* 1 birim = 2/6 = span 2 */
+}
+
+/* İlk satır: 1.5 + 1.5 + 1.5 + 1.5 = 6 birim */
+/* Ancak CSS grid fractional spans desteklemediği için alternatif yaklaşım */
+.dashboard {
+    display: grid;
+    grid-template-columns: 1.5fr 1.5fr 1.5fr 1.5fr; /* İlk satır için */
+    grid-template-rows: auto auto auto auto;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+/* Grid pozisyonları - Manuel yerleştirme */
+.dashboard .card:nth-child(1) { /* Sıcaklık */
+    grid-column: 1;
+    grid-row: 1;
+}
+
+.dashboard .card:nth-child(2) { /* Hava */
+    grid-column: 2;
+    grid-row: 1;
+}
+
+.dashboard .card:nth-child(3) { /* Oto Sıcaklık */
+    grid-column: 3;
+    grid-row: 1;
+}
+
+.dashboard .card:nth-child(4) { /* Oto Aydınlık */
+    grid-column: 4;
+    grid-row: 1;
+}
+
+/* İkinci satır için grid'i yeniden tanımlayalım */
+.dashboard {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    grid-template-rows: auto auto auto auto;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+/* İlk satır: Her biri 1.5 birim (9/6 ama fractional desteklenmiyor, bu yüzden yaklaşık) */
+.dashboard .card:nth-child(1) { /* Sıcaklık - 1.5 birim */
+    grid-column: 1 / 3; /* 2 birim kullan ama görsel olarak 1.5 gibi görünmesi için padding ayarla */
+}
+
+.dashboard .card:nth-child(2) { /* Hava - 1.5 birim */
+    grid-column: 3 / 4; /* 1 birim ama padding ile genişlet */
+}
+
+.dashboard .card:nth-child(3) { /* Oto Sıcaklık - 1.5 birim */
+    grid-column: 4 / 5; /* 1 birim ama padding ile genişlet */
+}
+
+.dashboard .card:nth-child(4) { /* Oto Aydınlık - 1.5 birim */
+    grid-column: 5 / 7; /* 2 birim kullan ama görsel olarak 1.5 gibi görünmesi için padding ayarla */
+}
+
+/* Daha iyi yaklaşım: 12 birimlik sistem kullanarak */
+.dashboard {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: auto auto auto auto auto;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+/* İlk satır: Sıcaklık ve Hava (2 eşit parça) */
+.dashboard .card:nth-child(1) { /* Sıcaklık */
+    grid-column: 1 / 3; /* 2 sütun kapla ama eşit paylaş */
+    grid-row: 1;
+}
+
+.dashboard .card:nth-child(2) { /* Hava */
+    grid-column: 3; /* Son sütun */
+    grid-row: 1;
+}
+
+/* Bu çalışmıyor, yeniden tanımlayalım */
+.dashboard {
+    display: grid;
+    grid-template-rows: auto auto auto auto auto;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+/* İlk satır için 2 eşit sütun */
+.dashboard .card:nth-child(1), /* Sıcaklık */
+.dashboard .card:nth-child(2)  /* Hava */ {
+    grid-row: 1;
+}
+
+.dashboard .card:nth-child(1) { /* Sıcaklık */
+    grid-column: 1;
+}
+
+.dashboard .card:nth-child(2) { /* Hava */
+    grid-column: 2;
+}
+
+/* İkinci satır için 2 eşit sütun */
+.dashboard .card:nth-child(3), /* Oto Sıcaklık */
+.dashboard .card:nth-child(4)  /* Oto Aydınlık */ {
+    grid-row: 2;
+}
+
+.dashboard .card:nth-child(3) { /* Oto Sıcaklık */
+    grid-column: 1;
+}
+
+.dashboard .card:nth-child(4) { /* Oto Aydınlık */
+    grid-column: 2;
+}
+
+/* Dinamik grid tanımı */
+.dashboard {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* İlk iki satır için 2 eşit sütun */
+    grid-template-rows: auto auto auto auto auto;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+/* Üçüncü ve dördüncü satırlar için grid'i yeniden tanımlamamız gerekiyor */
+/* CSS Grid'de satır bazlı farklı sütun sayısı için özel yaklaşım */
+
+.dashboard {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr); /* 6 birimlik sistem */
+    grid-template-rows: auto auto auto auto auto;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+/* İlk satır: Sıcaklık (3 birim) + Hava (3 birim) = 6 birim */
+.dashboard .card:nth-child(1) { /* Sıcaklık */
+    grid-column: 1 / 4; /* 3 birim */
+    grid-row: 1;
+}
+
+.dashboard .card:nth-child(2) { /* Hava */
+    grid-column: 4 / 7; /* 3 birim */
+    grid-row: 1;
+}
+
+/* İkinci satır: Oto Sıcaklık (3 birim) + Oto Aydınlık (3 birim) = 6 birim */
+.dashboard .card:nth-child(3) { /* Oto Sıcaklık */
+    grid-column: 1 / 4; /* 3 birim */
+    grid-row: 2;
+}
+
+.dashboard .card:nth-child(4) { /* Oto Aydınlık */
+    grid-column: 4 / 7; /* 3 birim */
+    grid-row: 2;
+}
+
+/* Üçüncü satır: Kapı (2 birim) + Pencere (2 birim) + Vantilatör (2 birim) = 6 birim */
+.dashboard .card:nth-child(5) { /* Kapı */
+    grid-column: 1 / 3; /* 2 birim */
+    grid-row: 3;
+}
+
+.dashboard .card:nth-child(6) { /* Pencere */
+    grid-column: 3 / 5; /* 2 birim */
+    grid-row: 3;
+}
+
+.dashboard .card:nth-child(7) { /* Vantilatör */
+    grid-column: 5 / 7; /* 2 birim */
+    grid-row: 3;
+}
+
+/* Dördüncü satır: Isıtıcı (2 birim) + Işık (2 birim) + Perde (2 birim) = 6 birim */
+.dashboard .card:nth-child(8) { /* Isıtıcı */
+    grid-column: 1 / 3; /* 2 birim */
+    grid-row: 4;
+}
+
+.dashboard .card:nth-child(9) { /* Işık */
+    grid-column: 3 / 5; /* 2 birim */
+    grid-row: 4;
+}
+
+.dashboard .card:nth-child(10) { /* Perde */
+    grid-column: 5 / 7; /* 2 birim */
+    grid-row: 4;
+}
+
+.card {
+    background: rgba(255, 255, 255, 0.95);
+    padding: 25px 20px;
+    border-radius: 15px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-3px);
+}
+
+.card.full-width {
+    grid-column: 1 / -1;
+    text-align: left;
+    margin-top: 10px;
+}
+
+.card h3 {
+    color: #4a5568;
+    margin-bottom: 20px;
+    font-size: 1.1rem;
+}
+
+/* Sıcaklık kartı için özel stil */
+.temperature-card .value {
+    font-size: 3.5rem;
+    font-weight: 700;
+    color: #667eea;
+    margin-bottom: 10px;
+    line-height: 1;
+}
+
+.temperature-card .label {
+    color: #718096;
+    font-size: 16px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Status kartları için özel stil */
+.status-card .status-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-weight: 600;
+    font-size: 15px;
+}
+
+.status-card .status-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+    flex-shrink: 0;
+}
+
+.status-card .status-dot.online {
+    background-color: #48bb78;
+    box-shadow: 0 0 10px rgba(72, 187, 120, 0.5);
+}
+
+.status-card .status-dot.offline {
+    background-color: #a0aec0;
+    animation: none;
+}
+
+.status-card .status-dot.warning {
+    background-color: #ed8936;
+    box-shadow: 0 0 10px rgba(237, 137, 54, 0.5);
+}
+
+/* Farklı durumlar için renk değişiklikleri */
+.status-card.active {
+    border: 2px solid #48bb78;
+    background: linear-gradient(135deg, rgba(72, 187, 120, 0.1), rgba(255, 255, 255, 0.95));
+}
+
+.status-card.inactive {
+    border: 2px solid transparent;
+}
+
+/* Özel durumlar için arka plan renkleri */
+.temperature-card.hot {
+    background: linear-gradient(135deg, rgba(245, 101, 101, 0.1), rgba(255, 255, 255, 0.95));
+    border: 2px solid #f56565;
+}
+
+.temperature-card.cold {
+    background: linear-gradient(135deg, rgba(66, 153, 225, 0.1), rgba(255, 255, 255, 0.95));
+    border: 2px solid #4299e1;
+}
+
+.temperature-card.normal {
+    background: linear-gradient(135deg, rgba(72, 187, 120, 0.1), rgba(255, 255, 255, 0.95));
+    border: 2px solid #48bb78;
+}
+
+#rawData {
+    background: #f7fafc;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+    max-height: 300px;
+    overflow-y: auto;
+    line-height: 1.4;
+}
+
+.log {
+    background: rgba(255, 255, 255, 0.95);
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.log h3 {
+    color: #4a5568;
+    margin-bottom: 15px;
+}
+
+#logArea {
+    background: #1a202c;
+    color: #e2e8f0;
+    padding: 15px;
+    border-radius: 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    height: 200px;
+    overflow-y: auto;
+    line-height: 1.4;
+}
+
+.log-entry {
+    margin-bottom: 8px;
+    border-left: 3px solid #667eea;
+    padding-left: 10px;
+}
+
+.log-success {
+    border-left-color: #48bb78;
+    color: #9ae6b4;
+}
+
+.log-error {
+    border-left-color: #f56565;
+    color: #feb2b2;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+
+    .header {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
+
+    .header h1 {
+        font-size: 2rem;
+    }
+
+    .current-api {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .controls {
+        flex-direction: column;
+    }
+
+    .dashboard {
+        grid-template-columns: 1fr;
+    }
+
+    .value {
+        font-size: 2rem;
+    }
+}
