@@ -1,4 +1,39 @@
-// Boolean durumları güncelle
+let refreshInterval = null;
+let isAutoRefresh = true;
+let controlStates = {}; // Kontrol durumlarını saklayacak
+
+// Sayfa yüklendiğinde otomatik veri çekmeyi başlat
+window.onload = async function() {
+    addLog('Dashboard başlatıldı');
+
+    // İlk veri çekme denemesi
+    setTimeout(fetchData, 500);
+
+    // 3 saniyede bir otomatik veri çekme
+    startAutoRefresh();
+};
+
+// Kontrol toggle fonksiyonu
+async function toggleControl(controlId, newState) {
+    const card = document.getElementById(`${controlId}_toggle`).closest('.control-card');
+    const statusElement = document.getElementById(`${controlId}_status`);
+
+    // Loading animasyonu başlat
+    card.classList.add('loading');
+
+    try {
+        // API'ye değişikliği gönder
+        const result = await eel.send_control_command(controlId, newState)();
+
+        if (result.status === 'success') {
+            // Başarılı ise durumu güncelle
+            controlStates[controlId] = newState;
+            updateControlDisplay(controlId, newState);
+            updateDependentControls();
+            addLog(`✅ ${controlId}: ${newState ? 'Açıldı' : 'Kapandı'}`, 'success');
+        } else {
+            // Hata durumunda toggle'ı geri çevir
+            document.getElementById(`// Boolean durumları güncelle
 function updateBooleanStatus(elementId, value, trueText = 'Açık', falseText = 'Kapalı') {
     const statusElement = document.getElementById(elementId);
     const card = statusElement.closest('.card');
