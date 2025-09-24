@@ -1,17 +1,23 @@
 import eel
 import requests
 import json
-import time
+import logging
 from datetime import datetime
+
+# Logging ayarları
+logging.basicConfig(
+    level=logging.INFO,  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 # Web klasörünü ayarla
 eel.init('web')
 
-# Global değişkenler - API URL'lerinizi buraya yazın
-api_url = "https://jsonplaceholder.typicode.com/posts/1"  # Veri alma API'nizi buraya yazın
-control_api_url = "https://jsonplaceholder.typicode.com/posts"  # Kontrol gönderme API'nizi buraya yazın
+# Global değişkenler
+api_url = "http://192.168.1.200:5000/api/data"
+control_api_url = "https://jsonplaceholder.typicode.com/posts"
 
-# Test verisi - API'niz bu formatta veri döndürmeli
+# Test verisi
 test_data = {
     "temperature": 23,
     "brightness": True,
@@ -34,18 +40,21 @@ def get_api_data():
     global last_data
 
     try:
+        logging.info(f"API'den veri çekiliyor: {api_url}")
         response = requests.get(api_url, timeout=10)
         response.raise_for_status()
 
         data = response.json()
 
-        # Eğer API test API'si ise (JSONPlaceholder), test verisi döndür
         if "jsonplaceholder.typicode.com" in api_url:
+            logging.debug("Test API kullanılıyor, sahte veriler döndürülecek.")
             data = test_data
 
-        # Veri tiplerini kontrol et ve düzelt
         processed_data = process_data_types(data)
         last_data = processed_data
+
+        # Gelen veriyi terminale yaz
+        logging.info(f"Gelen veri: {processed_data}")
 
         return {
             "status": "success",
@@ -54,9 +63,11 @@ def get_api_data():
         }
 
     except requests.exceptions.RequestException as e:
+        logging.error(f"API hatası: {str(e)}")
         return {"status": "error", "message": f"API hatası: {str(e)}"}
 
     except json.JSONDecodeError:
+        logging.error("API'den geçersiz JSON verisi geldi")
         return {"status": "error", "message": "API'den geçersiz JSON verisi geldi"}
 
 
@@ -66,21 +77,21 @@ def send_control_command(control_id, value):
     global control_api_url, test_data
 
     try:
-        # Gönderilecek veri
         payload = {
             "control": control_id,
             "value": value,
             "timestamp": datetime.now().isoformat()
         }
 
-        # API'ye POST isteği gönder
+        logging.info(f"Kontrol komutu gönderiliyor: {payload}")
         response = requests.post(control_api_url, json=payload, timeout=10)
         response.raise_for_status()
 
-        # Test API'si için yerel test_data'yı güncelle
         if "jsonplaceholder.typicode.com" in control_api_url:
             test_data[control_id] = value
-            print(f"Test modu: {control_id} = {value}")
+            logging.debug(f"Test modu güncellemesi: {control_id} = {value}")
+
+        logging.info(f"Kontrol komutu sonucu: {control_id} başarıyla {value} olarak ayarlandı")
 
         return {
             "status": "success",
@@ -89,9 +100,11 @@ def send_control_command(control_id, value):
         }
 
     except requests.exceptions.RequestException as e:
+        logging.error(f"Kontrol API hatası: {str(e)}")
         return {"status": "error", "message": f"Kontrol API hatası: {str(e)}"}
 
     except Exception as e:
+        logging.critical(f"Beklenmeyen hata: {str(e)}")
         return {"status": "error", "message": f"Beklenmeyen hata: {str(e)}"}
 
 
@@ -100,7 +113,6 @@ def process_data_types(data):
     """Veri tiplerini beklenen formatlara dönüştür"""
     processed = {}
 
-    # Beklenen veri tipleri
     expected_types = {
         "temperature": int,
         "brightness": bool,
@@ -119,7 +131,6 @@ def process_data_types(data):
             value = data[key]
             try:
                 if expected_type == bool:
-                    # Boolean dönüşümü
                     if isinstance(value, bool):
                         processed[key] = value
                     elif isinstance(value, (int, float)):
@@ -129,38 +140,32 @@ def process_data_types(data):
                     else:
                         processed[key] = False
                 elif expected_type == int:
-                    # Integer dönüşümü
                     processed[key] = int(float(value))
                 else:
                     processed[key] = expected_type(value)
             except (ValueError, TypeError):
-                # Hatalı veri durumunda varsayılan değer
-                if expected_type == bool:
-                    processed[key] = False
-                elif expected_type == int:
-                    processed[key] = 0
+                processed[key] = False if expected_type == bool else 0
+                logging.warning(f"Tip dönüşüm hatası: {key} için varsayılan değer atandı")
         else:
-            # Eksik veri durumunda varsayılan değer
-            if expected_type == bool:
-                processed[key] = False
-            elif expected_type == int:
-                processed[key] = 0
+            processed[key] = False if expected_type == bool else 0
+            logging.warning(f"Veri eksik: {key}, varsayılan değer atandı")
 
+    logging.debug(f"İşlenen veri: {processed}")
     return processed
 
 
 @eel.expose
 def get_current_api_url():
     """Mevcut API URL'sini döndür"""
-    global api_url
+    logging.info(f"Mevcut API URL'si istendi: {api_url}")
     return api_url
 
 
 if __name__ == '__main__':
-    print("Smart Home Dashboard başlatılıyor...")
-    print(f"Veri API: {api_url}")
-    print(f"Kontrol API: {control_api_url}")
-    print("Test modu aktif - gerçek API'lerinizi main.py'da ayarlayın")
+    logging.info("Smart Home Dashboard başlatılıyor...")
+    logging.info(f"Veri API: {api_url}")
+    logging.info(f"Kontrol API: {control_api_url}")
+    logging.info("Test modu aktif - gerçek API'lerinizi main.py'da ayarlayın")
 
     eel.start('index.html',
               size=(1200, 800),
