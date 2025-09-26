@@ -1,117 +1,148 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>API Dashboard</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="/eel.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="/eel.js"></script>
 </head>
 <body>
-    <div class="container">
-        <header class="header">
-            <h1>📊 API Dashboard</h1>
-            <div class="status-indicator" id="status">
-                <span class="status-dot offline"></span>
-                <span>Çevrimdışı</span>
-            </div>
-        </header>
+  <div class="container">
+    <header class="header">
+      <h1>🏠 Smart Home Dashboard</h1>
+      <div class="status-indicator" id="status">
+        <span class="status-dot offline"></span>
+        <span>Çevrimdışı</span>
+      </div>
+    </header>
 
-        <div class="dashboard">
-            <!-- İlk satır: Sıcaklık, Hava, Oto Sıcaklık, Oto Aydınlık (her biri 1.5 birim = 9/6) -->
-            <div class="card temperature-card size-1-5">
-                <h3>🌡️ Sıcaklık</h3>
-                <div class="value" id="temperature">-</div>
-                <div class="label">°C</div>
-            </div>
+    <div class="dashboard">
+      <!-- Sıcaklık -->
+      <div class="card temperature-card">
+        <h3>🌡️ Sıcaklık</h3>
+        <div class="value" id="temperature">-</div>
+        <div class="label">°C</div>
+      </div>
 
-            <div class="card status-card size-1-5">
-                <h3>🌤️ Hava</h3>
-                <div class="status-indicator" id="brightness">
-                    <span class="status-dot offline"></span>
-                    <span>Karanlık</span>
-                </div>
-            </div>
-
-            <div class="card status-card size-1-5">
-                <h3>🤖 Oto Sıcaklık</h3>
-                <div class="status-indicator" id="temperature_auto">
-                    <span class="status-dot offline"></span>
-                    <span>Kapalı</span>
-                </div>
-            </div>
-
-            <div class="card status-card size-1-5">
-                <h3>💡 Oto Aydınlık</h3>
-                <div class="status-indicator" id="brightness_auto">
-                    <span class="status-dot offline"></span>
-                    <span>Kapalı</span>
-                </div>
-            </div>
-
-            <!-- İkinci satır: Kapı, Pencere, Vantilatör (her biri 1 birim = 2/6) -->
-            <div class="card status-card size-1">
-                <h3>🚪 Kapı</h3>
-                <div class="status-indicator" id="open_door">
-                    <span class="status-dot offline"></span>
-                    <span>Kapalı</span>
-                </div>
-            </div>
-
-            <div class="card status-card size-1">
-                <h3>🪟 Pencere</h3>
-                <div class="status-indicator" id="window">
-                    <span class="status-dot offline"></span>
-                    <span>Kapalı</span>
-                </div>
-            </div>
-
-            <div class="card status-card size-1">
-                <h3>🌪️ Vantilatör</h3>
-                <div class="status-indicator" id="fan">
-                    <span class="status-dot offline"></span>
-                    <span>Kapalı</span>
-                </div>
-            </div>
-
-            <!-- Üçüncü satır: Isıtıcı, Işık, Perde (her biri 1 birim = 2/6) -->
-            <div class="card status-card size-1">
-                <h3>🔥 Isıtıcı</h3>
-                <div class="status-indicator" id="heater">
-                    <span class="status-dot offline"></span>
-                    <span>Kapalı</span>
-                </div>
-            </div>
-
-            <div class="card status-card size-1">
-                <h3>💡 Işık</h3>
-                <div class="status-indicator" id="light">
-                    <span class="status-dot offline"></span>
-                    <span>Kapalı</span>
-                </div>
-            </div>
-
-            <div class="card status-card size-1">
-                <h3>🏠 Perde</h3>
-                <div class="status-indicator" id="curtain">
-                    <span class="status-dot offline"></span>
-                    <span>Kapalı</span>
-                </div>
-            </div>
-
-            <!-- Ham Veri -->
-            <div class="card full-width">
-                <h3>📄 Ham Veri</h3>
-                <pre id="rawData">Henüz veri yok...</pre>
-            </div>
+      <!-- Hava Durumu -->
+      <div class="card status-card">
+        <h3>🌤️ Hava</h3>
+        <div class="status-indicator" id="brightness">
+          <span class="status-dot offline"></span>
+          <span>Karanlık</span>
         </div>
+      </div>
 
-        <div class="log">
-            <h3>📝 Log</h3>
-            <div id="logArea"></div>
+      <!-- Oto Sıcaklık -->
+      <div class="card control-card">
+        <h3>🤖 Oto Sıcaklık</h3>
+        <div class="toggle-container">
+          <span class="toggle-status" id="temperature_auto_status">Kapalı</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="temperature_auto_toggle" onchange="handleToggle('temperature_auto', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
         </div>
+      </div>
+
+      <!-- Oto Aydınlık -->
+      <div class="card control-card">
+        <h3>💡 Oto Aydınlık</h3>
+        <div class="toggle-container">
+          <span class="toggle-status" id="brightness_auto_status">Kapalı</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="brightness_auto_toggle" onchange="handleToggle('brightness_auto', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Kapı -->
+      <div class="card control-card">
+        <h3>🚪 Kapı</h3>
+        <div class="toggle-container">
+          <span class="toggle-status" id="open_door_status">Kapalı</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="open_door_toggle" onchange="handleToggle('open_door', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Pencere -->
+      <div class="card control-card" id="window_card">
+        <h3>🪟 Pencere</h3>
+        <div class="toggle-container">
+          <span class="toggle-status" id="window_status">Kapalı</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="window_toggle" onchange="handleToggle('window', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Vantilatör -->
+      <div class="card control-card" id="fan_card">
+        <h3>🌪️ Vantilatör</h3>
+        <div class="toggle-container">
+          <span class="toggle-status" id="fan_status">Kapalı</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="fan_toggle" onchange="handleToggle('fan', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Isıtıcı -->
+      <div class="card control-card" id="heater_card">
+        <h3>🔥 Isıtıcı</h3>
+        <div class="toggle-container">
+          <span class="toggle-status" id="heater_status">Kapalı</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="heater_toggle" onchange="handleToggle('heater', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Işık -->
+      <div class="card control-card" id="light_card">
+        <h3>💡 Işık</h3>
+        <div class="toggle-container">
+          <span class="toggle-status" id="light_status">Kapalı</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="light_toggle" onchange="handleToggle('light', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Perde -->
+      <div class="card control-card" id="curtain_card">
+        <h3>🏠 Perde</h3>
+        <div class="toggle-container">
+          <span class="toggle-status" id="curtain_status">Kapalı</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="curtain_toggle" onchange="handleToggle('curtain', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Ham Veri -->
+      <div class="card full-width">
+        <h3>📄 Ham Veri</h3>
+        <pre id="rawData">Henüz veri yok...</pre>
+      </div>
     </div>
 
-    <script src="script.js"></script>
+    <div class="log">
+      <h3>📝 Log</h3>
+      <div id="logArea"></div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
 </body>
 </html>

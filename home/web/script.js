@@ -1,8 +1,34 @@
-"use strict";
-
 let refreshInterval = null;
 let isAutoRefresh = true;
-let controlStates = {}; // (gelecekteki) kontrol durumları için
+
+// Son bilinen durumlar (sunucudan gelenler ile güncellenir)
+let state = {
+    temperature: null,
+    brightness: null,
+    open_door: null,
+    temperature_auto: null,
+    brightness_auto: null,
+    fan: null,
+    window: null,
+    heater: null,
+    light: null,
+    curtain: null,
+};
+
+// Kart ID eşleştirmeleri (UI'da kilit göstermek için)
+const CARD_IDS = {
+    fan: "fan_card",
+    window: "window_card",
+    heater: "heater_card",
+    light: "light_card",
+    curtain: "curtain_card",
+};
+
+// Birbirini kilitleyen kontroller
+const INTERLOCKS = {
+    temperature_auto: ["fan", "window", "heater"],
+    brightness_auto: ["light", "curtain"],
+};
 
 // Sayfa yüklendiğinde otomatik veri çekmeyi başlat
 window.onload = async function () {
@@ -62,46 +88,130 @@ function stopAutoRefresh() {
     }
 }
 
-// (Opsiyonel) kontrol gönderme — şimdilik UI'da kullanılmıyor ama hatasız dursun
-async function toggleControl(controlId, newState) {
+// Kullanıcı etkile��imi ile tetiklenen toggle işlemleri
+async function handleToggle(controlId, newState) {
+    // Sunucudan gelen son duruma göre interlock kontrolü
+    if (state.temperature_auto && ["fan", "window", "heater"].includes(controlId)) {
+        // İzin verme ve geri al
+        addLog("🔒 Oto Sıcaklık açıkken fan/pencere/ısıtıcı kullanılmaz", "error");
+        setToggleUI(controlId, state[controlId]);
+        return;
+    }
+    if (state.brightness_auto && ["light", "curtain"].includes(controlId)) {
+        addLog("🔒 Oto Aydınlık açıkken perde/ışık kullanılmaz", "error");
+        setToggleUI(controlId, state[controlId]);
+        return;
+    }
+
+    // Değişim yoksa gönderme
+    if (state.hasOwnProperty(controlId) && state[controlId] === newState) {
+        addLog(`ℹ️ ${controlId} zaten ${newState ? "Açık" : "Kapalı"}`);
+        return;
+    }
+
+    // UI'da yükleniyor hali
+    setCardLoading(controlId, true);
+
     try {
         const result = await eel.send_control_command(controlId, newState)();
         if (result && result.status === "success") {
-            controlStates[controlId] = newState;
-            addLog(`✅ ${controlId}: ${newState ? "Açıldı" : "Kapandı"}`, "success");
+            // Lokal durumu güncelle
+            state[controlId] = newState;
+            setToggleUI(controlId, newState);
+            addLog(`✅ ${controlId} ${newState ? "Açıldı" : "Kapandı"}`, "success");
+
+            // Interlock gerektiriyorsa uygula
+            if (controlId === "temperature_auto" || controlId === "brightness_auto") {
+                applyInterlocks();
+            }
         } else {
             const msg = result && result.message ? result.message : "Komut gönderilemedi";
-            addLog(`❌ ${controlId}: ${msg}` , "error");
+            addLog(`❌ ${controlId}: ${msg}`, "error");
+            // Eski haline dön
+            setToggleUI(controlId, state[controlId]);
         }
     } catch (error) {
         addLog(`❌ ${controlId} komutu hata verdi: ${error}`, "error");
+        // Eski haline dön
+        setToggleUI(controlId, state[controlId]);
+    } finally {
+        setCardLoading(controlId, false);
     }
 }
 
-// Veriyi göster
+// Veriyi UI'da göster ve durumları uygula
 function displayData(data, timestamp) {
     if (!data || typeof data !== "object") {
         addLog("❌ Geçersiz veri formatı", "error");
         return;
     }
 
-    // Özel değişkenleri işle
+    // Lokal state'i güncelle
+    state = { ...state, ...data };
+
+    // Sıcaklık ve hava durumu
     updateTemperature(data.temperature);
-    updateWeatherStatus("brightness", data.brightness); // Özel hava durumu fonksiyonu
-    updateBooleanStatus("open_door", data.open_door, "Açık", "Kapalı");
-    updateBooleanStatus("temperature_auto", data.temperature_auto);
-    updateBooleanStatus("brightness_auto", data.brightness_auto);
-    updateBooleanStatus("fan", data.fan);
-    updateBooleanStatus("window", data.window, "Açık", "Kapalı");
-    updateBooleanStatus("heater", data.heater);
-    updateBooleanStatus("light", data.light);
-    updateBooleanStatus("curtain", data.curtain, "Açık", "Kapalı");
+    updateWeatherStatus("brightness", data.brightness);
+
+    // Toggle'ları ve metinleri güncelle
+    setToggleUI("temperature_auto", data.temperature_auto, "Açık", "Kapalı");
+    setToggleUI("brightness_auto", data.brightness_auto, "Açık", "Kapalı");
+
+    setToggleUI("open_door", data.open_door, "Açık", "Kapalı");
+    setToggleUI("window", data.window, "Açık", "Kapalı");
+    setToggleUI("fan", data.fan, "Açık", "Kapalı");
+    setToggleUI("heater", data.heater, "Açık", "Kapalı");
+    setToggleUI("light", data.light, "Açık", "Kapalı");
+    setToggleUI("curtain", data.curtain, "Açık", "Kapalı");
+
+    // Interlock'ları uygula
+    applyInterlocks();
 
     // Ham veri
     const raw = document.getElementById("rawData");
     if (raw) {
         raw.textContent = `Son Güncelleme: ${timestamp || "-"}\n\n${JSON.stringify(data, null, 2)}`;
     }
+}
+
+// Bir toggle'ın UI'ını güncelle (checkbox + durum metni)
+function setToggleUI(controlId, value, trueText = "Açık", falseText = "Kapalı") {
+    const input = document.getElementById(`${controlId}_toggle`);
+    const status = document.getElementById(`${controlId}_status`);
+
+    if (input) input.checked = !!value;
+    if (status) status.textContent = value ? trueText : falseText;
+}
+
+// Bir toggle'ı kilitle/aç
+function setToggleDisabled(controlId, disabled) {
+    const input = document.getElementById(`${controlId}_toggle`);
+    if (input) input.disabled = !!disabled;
+
+    const cardId = CARD_IDS[controlId];
+    if (cardId) {
+        const card = document.getElementById(cardId);
+        if (card) card.classList.toggle("disabled", !!disabled);
+    }
+}
+
+// Interlock'ları UI'a uygula
+function applyInterlocks() {
+    const tempAuto = !!state.temperature_auto;
+    const brightAuto = !!state.brightness_auto;
+
+    INTERLOCKS.temperature_auto.forEach(id => setToggleDisabled(id, tempAuto));
+    INTERLOCKS.brightness_auto.forEach(id => setToggleDisabled(id, brightAuto));
+}
+
+// Kartı "yükleniyor" durumuna al/çıkar
+function setCardLoading(controlId, isLoading) {
+    const cardId = CARD_IDS[controlId];
+    if (!cardId) return;
+    const card = document.getElementById(cardId);
+    if (!card) return;
+
+    card.classList.toggle("loading", !!isLoading);
 }
 
 // Sıcaklık değerini güncelle
@@ -131,35 +241,7 @@ function updateTemperature(temperature) {
     }
 }
 
-// Boolean durumları güncelle
-function updateBooleanStatus(elementId, value, trueText = "Açık", falseText = "Kapalı") {
-    const statusElement = document.getElementById(elementId);
-    if (!statusElement) return;
-
-    const card = statusElement.closest(".card");
-    const dot = statusElement.querySelector(".status-dot");
-    const span = statusElement.querySelector("span:last-child");
-
-    if (value !== undefined && value !== null) {
-        if (value === true || value === "true" || value === 1) {
-            dot && (dot.className = "status-dot online");
-            span && (span.textContent = trueText);
-            card && card.classList.remove("inactive");
-            card && card.classList.add("active");
-        } else {
-            dot && (dot.className = "status-dot offline");
-            span && (span.textContent = falseText);
-            card && card.classList.remove("active");
-            card && card.classList.add("inactive");
-        }
-    } else {
-        dot && (dot.className = "status-dot warning");
-        span && (span.textContent = "Veri yok");
-        card && card.classList.remove("active", "inactive");
-    }
-}
-
-// Özel hava durumu güncelleme fonksiyonu
+// Özel hava durumu güncelleme fonksiyonu (aydınlık/karanlık)
 function updateWeatherStatus(elementId, value) {
     const statusElement = document.getElementById(elementId);
     if (!statusElement) return;
@@ -187,7 +269,7 @@ function updateWeatherStatus(elementId, value) {
     }
 }
 
-// Durum göstergesini güncelle
+// Durum göstergesini güncelle (üstteki küçük online/offline)
 function updateStatus(status, text) {
     const statusElement = document.getElementById("status");
     if (!statusElement) return;
