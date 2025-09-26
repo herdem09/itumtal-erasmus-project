@@ -15,8 +15,8 @@ load_dotenv()  # .env dosyasındaki değerleri yükle
 
 PASSWORD = os.getenv("PASSWORD")
 PASSWORDS = {
-    "name": os.getenv("PASSWORD_NAME"),
-    "password": os.getenv("PASSWORD_VALUE")
+    "name": os.getenv("USER_NAME"),
+    "password": os.getenv("USER_PASSWORD")
 }
 
 SENDER_EMAIL = os.getenv("SENDER_EMAIL")
@@ -327,7 +327,29 @@ def email():
         message["Subject"] = "Akıllı Ev Doğrulama Kodu"
         message["From"] = SENDER_EMAIL
         message["To"] = RECEIVER_EMAIL
-        part = MIMEText(MAIL_HTML, "html")
+
+        mail_link = f"http://127.0.0.1:5000/email-confirm"
+        now_str = datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")
+        mail_html = f"""
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #4F46E5;">Akıllı Ev Kontrol Sistemi</h2>
+  <p>Merhaba herdemitumtal</p>
+  <p>Akıllı ev sisteminize giriş için linke tıklayın:</p>
+  <div style="background-color: #F3F4F6; padding: 20px; border-radius: 8px; 
+       margin: 20px 0; text-align: center;">
+    <a href="{mail_link}" 
+       style="color: #4F46E5; font-size: 24px; text-decoration: none; 
+              font-weight: bold;">
+       {mail_link}
+    </a>
+  </div>
+  <p style="color: #6B7280;">Doğrulama Kodunuz:</p>
+  <pre style="background:#eef2ff; padding:10px; border-radius:8px; border:1px solid #c7d2fe; font-size:14px;">{email_site}</pre>
+  <p style="color: #6B7280;">Bu kod 5 dakika geçerlidir.</p>
+  <p style="color: #6B7280; font-size: 12px;">Tarih: {now_str}</p>
+</div>
+"""
+        part = MIMEText(mail_html, "html")
         message.attach(part)
 
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:

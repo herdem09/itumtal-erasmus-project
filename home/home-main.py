@@ -8,6 +8,7 @@ import pygame
 import io
 import tempfile
 import os
+import spotify_api
 
 genai.configure(api_key="AIzaSyBGv0KCGxRwxY8J5-HuVXuV5lepHl_4WrM")
 
@@ -18,8 +19,13 @@ model = genai.GenerativeModel(
         "top_p": 0.9,
         "top_k": 40,
     },
-    system_instruction="Sen yardımcı bir akıllı ev asistanısın. Türkçe ve net cevaplar ver. Eğer mesaj 'teşekkürler', 'sağol', 'baybay', 'tamam', 'görüşürüz' vb. bir şey ise sadece '1' cevabını ver. Eğer mesaj 'sistemi kapat', 'programı kapat', 'tamamen kapat' vb bir şey ise sadece '2' cevabını ver."
-)
+    system_instruction="""Sen yardımcı bir akıllı ev asistanısın. Türkçe ve net cevaplar ver.
+    Eğer mesaj 'teşekkürler', 'sağol', 'baybay', 'tamam', 'görüşürüz' vb. bir şey ise sadece '1G5@pB%j9&rT#k2!LzW7x$YcQ' cevabını ver.
+    Eğer mesaj 'şarkı atla', 'spotify'da şarkıyı atla', 'sonraki şarkı', 'sonraki şarkıya spotify'da atla' vb bir şey ise sadece '2G5@pB%j9&rT#k2!LzW7x$YcQ' cevabını ver.
+    Eğer mesaj 'önceki şarkı', 'önceki şarkıyı tekrar çal', 'önceki şarkıya dön', 'tekrar çal', 'spotify'da önceki şarkıyı çal' vb bir şey ise sadece '3G5@pB%j9&rT#k2!LzW7x$YcQ' cevabını ver.
+    Eğer mesaj 'şarkıyı durdur', 'spotify'da şarkıyı durdur', 'durdur' vb bir şey ise sadece '4G5@pB%j9&rT#k2!LzW7x$YcQ' cevabını ver.
+    Eğer mesaj 'şarkıyı başlat', 'spotify'da şarkıyı başlat', 'başlat' vb bir şey ise sadece '5G5@pB%j9&rT#k2!LzW7x$YcQ' cevabını ver.
+    Eğer mesaj 'şu şarkıyı çal:şarkı ismi', 'spotify'da şu şarkıyı çal şarkı ismi', 'şarkı ismi' ni çal', 'spotifyda şarkı ismi çal' vb bir şey ise sadece '6G5@pB%j9&rT#k2!LzW7x$YcQşarkıismi' cevabını ver.""")
 
 class VoiceAssistant:
     def __init__(self):
@@ -125,14 +131,22 @@ class VoiceAssistant:
                 continue
             response = self.get_ai_response(user_input)
             print(f"🤖 Asistan: {response}")
-            if response.strip() == "1":
+            if response.strip() == "1G5@pB%j9&rT#k2!LzW7x$YcQ":
                 print("💤 Asistan devre dışı - tekrar aktivasyon bekleniyor")
                 self.is_active = False
                 self.conversation_history = []
-            elif response.strip() == "2":
-                print("🛑 Sistem sonlandırılıyor...")
-                self.listening = False
-                break
+            if response.strip() == "2G5@pB%j9&rT#k2!LzW7x$YcQ":
+                spotify_api.skip()
+            elif response.strip() == "G5@pB%j9&rT#k2!LzW7x$YcQ":
+                spotify_api.previous()
+            elif response.strip() == "4G5@pB%j9&rT#k2!LzW7x$YcQ":
+                spotify_api.pause()
+            elif response.strip().startswith("5G5@pB%j9&rT#k2!LzW7x$YcQ"):
+                spotify_api.play()
+            elif response.strip().startswith("6G5@pB%j9&rT#k2!LzW7x$YcQ"):
+                song_name = response.strip()[25:]
+                spotify_api.play_the_song(song_name)
+
             else:
                 self.speak(response)
 

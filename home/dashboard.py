@@ -35,6 +35,67 @@ test_data = {
 
 last_data = {}
 
+# Authentication API configuration
+AUTH_API_BASE_URL = "http://127.0.0.1:5000"  # api/api.py'nin çalıştığı port
+confirmed_code_token = None
+
+
+@eel.expose
+def password_confirmation_api(name, password):
+    """Kullanıcı adı/parola ile /password-confirmation çağrısı yapar."""
+    try:
+        payload = {"name": name, "password": password}
+        logging.info(f"/password-confirmation istek: {payload}")
+        resp = requests.get(f"{AUTH_API_BASE_URL}/password-confirmation", json=payload, timeout=10)
+        try:
+            data = resp.json()
+        except Exception:
+            return {"status": "error", "message": "Geçersiz API yanıtı"}
+
+        if resp.status_code == 200 and data.get("success") == "successful" and "random_code" in data:
+            logging.info("Parola doğrulama başarılı, random_code alındı")
+            return {"status": "success", "random_code": data["random_code"]}
+        else:
+            msg = data.get("error") or data.get("message") or f"HTTP {resp.status_code}"
+            logging.warning(f"Parola doğrulama başarısız: {msg}")
+            return {"status": "error", "message": msg}
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Parola doğrulama isteği hatası: {e}")
+        return {"status": "error", "message": str(e)}
+
+
+@eel.expose
+def request_email_api(random_code):
+    """Random code ile /email çağrısı yapar, doğrulama bağlantısını e-posta ile gönderir."""
+    try:
+        payload = {"random_code": random_code}
+        logging.info(f"/email istek: {payload}")
+        resp = requests.get(f"{AUTH_API_BASE_URL}/email", json=payload, timeout=10)
+        try:
+            data = resp.json()
+        except Exception:
+            return {"status": "error", "message": "Geçersiz API yanıtı"}
+
+        if resp.status_code == 200 and data.get("success") == "successful":
+            logging.info("E-posta gönderimi başarılı")
+            return {"status": "success", "message": "E-posta gönderildi"}
+        else:
+            msg = data.get("error") or data.get("message") or f"HTTP {resp.status_code}"
+            logging.warning(f"E-posta gönderimi başarısız: {msg}")
+            return {"status": "error", "message": msg}
+    except requests.exceptions.RequestException as e:
+        logging.error(f"E-posta isteği hatası: {e}")
+        return {"status": "error", "message": str(e)}
+
+
+@eel.expose
+def save_confirmed_code(code):
+    """Kullanıcının e-posta ile aldığı confirmed_code'u saklar."""
+    global confirmed_code_token
+    confirmed_code_token = code
+    logging.info("Confirmed code kaydedildi")
+    return {"status": "success"}
+
 
 @eel.expose
 def get_api_data():
@@ -182,7 +243,7 @@ if __name__ == '__main__':
     logging.info(f"Kontrol API: {control_api_url}")
     logging.info("Test modu aktif - gerçek API'lerinizi main.py'da ayarlayın")
 
-    eel.start('index.html',
+    eel.start('login.html',
               size=(1200, 800),
               port=8080,
               host='localhost')
